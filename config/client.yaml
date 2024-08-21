@@ -1,0 +1,5 @@
+env: "debug" #changable to debug or prod or local
+
+database:
+  driverName: "sqlite3"
+  dataSourceName: "./local.db"
