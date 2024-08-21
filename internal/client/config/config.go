@@ -20,9 +20,9 @@ type DBConfig struct {
 }
 
 func MustLoad() *Config {
-	configPath := filepath.Join(os.Getenv("Program Files(x86)"), "Jcloud", "config", "client.yaml")
+	configPath := filepath.Join(os.Getenv("ProgramFiles(x86)"), "JcloudClient", "config", "client.yaml")
 	if configPath == "" {
-		log.Fatal("CONFIG_PATH is not set")
+		log.Fatal("Program Files(x86) is not set")
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {

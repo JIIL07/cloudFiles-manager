@@ -21,4 +21,4 @@ Filename: "{app}\bin\cloud.exe"; Description: "Run Jcloud Client"; Flags: nowait
 Name: "addtopath"; Description: "Add Jcloud Client to PATH"; GroupDescription: "Additional icons:"; Flags: unchecked
 
 [Registry]
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}/bin"; Tasks: addtopath
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}\bin"; Tasks: addtopath
