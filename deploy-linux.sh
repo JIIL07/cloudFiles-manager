@@ -21,4 +21,7 @@ if ! grep -q "$TARGET_DIR" <<< "$PATH"; then
     source /etc/profile
 fi
 
+echo "export CLIENT_CONFIG_PATH="/opt/jcloud/config/client.yaml"" >> ~/.bashrc && source ~/.bashrc
+
+
 echo "Install successfully completed, jcloud installed in $TARGET_DIR"
