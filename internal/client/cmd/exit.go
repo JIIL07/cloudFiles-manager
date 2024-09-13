@@ -6,12 +6,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// exitCmd represents the exit command
 var exitCmd = &cobra.Command{
 	Use:   "exit",
-	Short: "Exit the cloud CLI",
+	Short: "exit JcloudFile CLI",
+	Long:  "exit JcloudFile CLI, remove local storage and write logs",
 	Run: func(cmd *cobra.Command, args []string) {
-		fctx.Storage.Close()
+		a.Storage.S.Close()
 		filePath := "./local.db"
 		err := os.Remove(filePath)
 		if err != nil {

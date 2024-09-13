@@ -1,17 +1,25 @@
 package config
 
 import (
-	"github.com/ilyakaznacheev/cleanenv"
 	"log"
 	"os"
-	"path/filepath"
-)
+	"time"
 
-var Statuses = []string{"upload"}
+	"github.com/ilyakaznacheev/cleanenv"
+)
 
 type Config struct {
 	Env      string `yaml:"env" env-required:"true"`
+	Server   ServerConfig
 	Database DBConfig
+	URL      string `yaml:"url" env-required:"true"`
+}
+
+type ServerConfig struct {
+	Address      string        `yaml:"address" env-default:"8080"`
+	ReadTimeout  time.Duration `yaml:"readTimeout" env-default:"10s"`
+	WriteTimeout time.Duration `yaml:"writeTimeout" env-default:"20s"`
+	IdleTimeout  time.Duration `yaml:"idleTimeout" env-default:"60s"`
 }
 
 type DBConfig struct {
@@ -20,9 +28,9 @@ type DBConfig struct {
 }
 
 func MustLoad() *Config {
-	configPath := filepath.Join(os.Getenv("ProgramFiles(x86)"), "JcloudClient", "config", "client.yaml")
+	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
-		log.Fatal("Program Files(x86) is not set")
+		log.Fatal("CONFIG_PATH is not set")
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {

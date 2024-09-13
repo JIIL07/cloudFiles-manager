@@ -3,39 +3,45 @@ package models
 import (
 	"bufio"
 	"bytes"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type FileMetadata struct {
-	Filename  string `db:"filename"`
-	Extension string `db:"extension"`
-	Filesize  int    `db:"filesize"`
+	Name        string `db:"filename"`
+	Extension   string `db:"extension"`
+	Size        int    `db:"filesize"`
+	HashSum     string `db:"hash_sum"`
+	Description string `db:"description,omitempty"`
 }
 
 func (metadata *FileMetadata) Split() {
-	dotIndex := strings.LastIndex(metadata.Filename, ".")
+	dotIndex := strings.LastIndex(metadata.Name, ".")
 	if dotIndex != -1 {
-		metadata.Extension = metadata.Filename[dotIndex+1:]
-		metadata.Filename = metadata.Filename[:dotIndex]
+		metadata.Extension = metadata.Name[dotIndex+1:]
+		metadata.Name = metadata.Name[:dotIndex]
 	} else {
 		metadata.Extension = ""
 	}
 }
 
 func NewFileMetadata(fullname string) FileMetadata {
-	metadata := FileMetadata{Filename: fullname}
+	metadata := FileMetadata{Name: fullname}
 	metadata.Split()
 	return metadata
 }
 
 type File struct {
-	ID       int `db:"id"`
-	Metadata FileMetadata
-	Status   string `db:"status"`
-	Data     []byte `db:"data"`
+	ID         int          `db:"id"`
+	Meta       FileMetadata `db:"m"`
+	Status     string       `db:"status"`
+	Data       []byte       `db:"data"`
+	CreatedAt  time.Time    `db:"created_at"`
+	ModifiedAt time.Time    `db:"last_modified_at"`
 }
 
 func (i *File) SetFile() error {
@@ -47,13 +53,37 @@ func (i *File) SetFile() error {
 	if err != nil {
 		return fmt.Errorf("error reading name: %v", err)
 	}
-	i.Metadata = NewFileMetadata(m)
+	i.Meta = NewFileMetadata(m)
 
 	data, err := ReadDataFromStdin()
 	if err != nil {
 		return fmt.Errorf("error reading data: %v", err)
 	}
 	i.Data = data
+
+	return nil
+}
+
+func (i *File) Serialize() []byte {
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+
+	err := encoder.Encode(i)
+	if err != nil {
+		return nil
+	}
+
+	return buffer.Bytes()
+}
+
+func (i *File) Deserialize(data []byte) error {
+	buffer := bytes.NewBuffer(data)
+	decoder := gob.NewDecoder(buffer)
+
+	err := decoder.Decode(i)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

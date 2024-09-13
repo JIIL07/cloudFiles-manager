@@ -1,42 +1,62 @@
 package cmd
 
 import (
-	"github.com/JIIL07/jcloud/internal/client/models"
-	"github.com/JIIL07/jcloud/internal/client/requests"
-	"log"
-
+	"fmt"
+	"github.com/JIIL07/jcloud/internal/client/jc"
 	"github.com/spf13/cobra"
+	"os"
 )
 
-// deteleCmd represents the detele command
-var deteleCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+var deleteCmd = &cobra.Command{
+	Use:   "delete [flags] [filename]...",
+	Short: "Delete file or directory records from local database",
+	Long:  "Delete one or more file or directory records from the local SQLite database without affecting the server storage.",
 	Run: func(cmd *cobra.Command, args []string) {
-		f := &models.File{}
-		err := requests.DeleteFile(f)
-		if err != nil {
-			log.Println(err)
+		if allFlag {
+			confirmAction("all files")
+			err := jc.DeleteAllFiles(a.File)
+			if err != nil {
+				cobra.CheckErr(fmt.Errorf("failed to delete all files from database: %w", err))
+			}
+			return
+		}
+
+		if len(args) == 0 {
+			cobra.CheckErr(fmt.Errorf("no files specified"))
+		}
+
+		if interactive {
+			withInteractive(args, deleteFile)
+		} else {
+			withWorkerPool(args, deleteFile)
 		}
 	},
 }
 
+func deleteFile(arg string) {
+	if arg == "" {
+		cobra.CheckErr(fmt.Errorf("no file specified"))
+		return
+	}
+
+	if dryRun {
+		cobra.WriteStringAndCheck(os.Stdout, fmt.Sprintf("Would delete record for file %s from database\n", arg))
+	} else {
+		logVerbose("Deleting file record", "file", arg)
+		a.File.F.Meta.Name = arg
+		err := jc.DeleteFile(a.File)
+		if err != nil && !ignoreErrors {
+			cobra.CheckErr(fmt.Errorf("failed to delete file record: %w", err))
+		}
+	}
+}
+
 func init() {
-	RootCmd.AddCommand(deteleCmd)
+	deleteCmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Delete all files")
+	deleteCmd.Flags().BoolVarP(&ignoreErrors, "ignore-errors", "I", false, "Ignore errors and continue deleting files")
+	deleteCmd.Flags().BoolVarP(&dryRun, "dry-run", "n", false, "Show files that would be deleted, without deleting them")
+	deleteCmd.Flags().BoolVarP(&verboseFlag, "verbose", "V", false, "Show detailed logs during deletion")
+	deleteCmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactively choose files to delete")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// deteleCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// deteleCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.AddCommand(deleteCmd)
 }

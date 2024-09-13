@@ -1,41 +1,45 @@
+// nolint:errcheck
 package main
 
 import (
 	"fmt"
 	"github.com/JIIL07/jcloud/internal/client/anchor"
+	"github.com/JIIL07/jcloud/internal/client/delta"
 	"github.com/JIIL07/jcloud/internal/client/models"
+	"github.com/JIIL07/jcloud/pkg/home"
+	"os"
+	"path/filepath"
+	"strconv"
 )
 
 func main() {
-	files := []models.File{
-		{
-			ID: 1,
-			Metadata: models.FileMetadata{
-				Filename:  "example1.txt",
-				Extension: ".txt",
-				Filesize:  1234,
+	var files []models.File
+
+	for i := 1; i <= 50; i++ {
+		file := models.File{
+			ID: i % 2,
+			Meta: models.FileMetadata{
+				Name:      "example" + strconv.Itoa(i),
+				Extension: "txt",
+				Size:      1024,
 			},
-			Status: "active",
-			Data:   []byte("Hello, World!"),
-		},
-		{
-			ID: 2,
-			Metadata: models.FileMetadata{
-				Filename:  "example2.jpg",
-				Extension: ".jpg",
-				Filesize:  5678,
-			},
-			Status: "active",
-			Data:   []byte("Image Data"),
-		},
+			Status: "new",
+			Data:   []byte("Hello, Golang! " + strconv.Itoa(i)),
+		}
+		files = append(files, file)
 	}
 
-	anchorMessage := "Initial Anchor"
-	a, err := anchor.NewAnchor(files, anchorMessage)
+	previousSnapshots := make(map[int]*delta.Snapshot)
+
+	a, err := anchor.NewAnchor(files, "Initial commit", previousSnapshots)
 	if err != nil {
-		fmt.Printf("Error during Anchor: %v\n", err)
+		fmt.Println("Error creating anchor:", err)
 		return
 	}
 
-	fmt.Printf("Anchor successful: %v\n", a)
+	err = os.WriteFile(filepath.Join(home.GetHome(), ".jcloud", ".anchor", "anchor.log"), []byte(a.Log), 0600)
+	if err != nil {
+		fmt.Println("Error writing anchor log:", err)
+		return
+	}
 }

@@ -1,12 +1,15 @@
 package util
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/JIIL07/jcloud/internal/client/config"
 	"github.com/JIIL07/jcloud/internal/client/models"
+	jhash "github.com/JIIL07/jcloud/pkg/hash"
 	"github.com/fsnotify/fsnotify"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -101,7 +104,7 @@ func WaitForFile(tempDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer watcher.Close()
+	defer watcher.Close() // nolint:errcheck
 
 	ctx, cancel := context.WithTimeout(context.Background(), tempDirTimeout)
 	defer cancel()
@@ -150,15 +153,32 @@ func GetFileFromExplorer() (*models.File, error) {
 		return nil, fmt.Errorf("expected a file, but found a directory: %s", fileEntry.Name())
 	}
 
-	fileData, err := os.ReadFile(filePath)
+	time.Sleep(time.Second * 1)
 
 	meta := models.NewFileMetadata(fileEntry.Name())
-	meta.Filesize = len(fileData)
+
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var cBuf bytes.Buffer
+	gzipWriter := gzip.NewWriter(&cBuf)
+	_, err = gzipWriter.Write(fileData)
+	if err != nil {
+		log.Fatal("Error compressing data:", err)
+	}
+	gzipWriter.Close() // nolint:errcheck
+
+	meta.Size = len(fileData)
+	meta.HashSum = jhash.Hash(string(fileData))
 
 	f := &models.File{
-		Metadata: meta,
-		Status:   config.Statuses[0],
-		Data:     fileData,
+		Meta:       meta,
+		Status:     "upload",
+		Data:       fileData,
+		CreatedAt:  time.Now(),
+		ModifiedAt: time.Now(),
 	}
 
 	return f, nil

@@ -1,20 +1,20 @@
+// nolint:errcheck
 package main
 
 import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"github.com/JIIL07/jcloud/api/protobuf"
 	"io"
 	"log"
 	"os"
 	"strings"
 
-	protobuf "github.com/JIIL07/jcloud/internal/client/proto"
 	"google.golang.org/protobuf/proto"
 )
 
 func main() {
-	// Открываем файл
 	f, err := os.Open("go.mod")
 	if err != nil {
 		log.Fatal("Error opening file:", err)
@@ -45,7 +45,7 @@ func main() {
 		Metadata: &protobuf.FileMetadata{
 			Filename:  strings.Split(f.Name(), ".")[0],
 			Extension: strings.Split(f.Name(), ".")[1],
-			Filesize:  int32(compressedBuffer.Len()),
+			Filesize:  int64(compressedBuffer.Len()),
 		},
 		Status: "upload",
 		Data:   compressedBuffer.Bytes(),
@@ -56,7 +56,7 @@ func main() {
 		log.Fatal("Marshaling error:", err)
 	}
 
-	err = os.WriteFile("file.bin", data, 0644)
+	err = os.WriteFile("file.bin", data, 0600)
 	if err != nil {
 		log.Fatal("Error writing file:", err)
 	}
@@ -77,9 +77,16 @@ func main() {
 	if err != nil {
 		log.Fatal("Error creating gzip reader:", err)
 	}
-	_, err = io.Copy(&decompressedBuffer, gzipReader)
+
+	maxDecompressedSize := 10 * 1024 * 1024 * 1024 * 1024
+	limitedReader := io.LimitReader(gzipReader, int64(maxDecompressedSize))
+
+	n, err = io.Copy(&decompressedBuffer, limitedReader)
 	if err != nil {
-		log.Fatal("Error decompressing data:", err)
+		return
+	}
+	if n == int64(maxDecompressedSize) {
+		return
 	}
 	gzipReader.Close()
 
